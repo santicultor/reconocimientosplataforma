@@ -6,7 +6,7 @@ export interface NominationMail {
   whatDid: string;
   whyMattered: string;
   month: number;
-  siteUrl: string;       // enlace a la plataforma
+  siteUrl?: string;      // (ya no se usa: el correo no lleva enlaces)
 }
 
 const esc = (s: string) =>
@@ -19,7 +19,7 @@ export function renderNominationEmail(m: NominationMail) {
   const v = valueByKey(m.valueKey);
   const mes = monthName(m.month);
   const nombre = esc(firstName(m.name));
-  const subject = `${firstName(m.name)}, alguien del equipo quiso hacerte visible ✨`;
+  const subject = `${firstName(m.name)}, alguien del equipo quiso hacerte visible`;
 
   const quote = (label: string, text: string) => `
     <tr><td style="padding:0 40px 22px 40px;">
@@ -30,7 +30,6 @@ export function renderNominationEmail(m: NominationMail) {
   const html = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
 <body style="margin:0;padding:0;background:#F4F5F7;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#F4F5F7;">Alguien de tu equipo escribió lo que hiciste y por qué importó. Pasa a leerlo.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F5F7;"><tr><td align="center" style="padding:28px 12px;">
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(0,32,91,0.12);">
     <tr><td style="background:#00205B;padding:34px 40px 30px 40px;">
@@ -53,12 +52,9 @@ export function renderNominationEmail(m: NominationMail) {
     ${quote('Lo que hiciste', m.whatDid)}
     ${quote('Por qué importó', m.whyMattered)}
     <tr><td style="padding:6px 40px 34px 40px;">
-      <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#2B3652;margin:0 0 22px 0;">
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#2B3652;margin:0;">
         Que alguien lo escriba ya es un reconocimiento. Gracias por hacer lo que haces, incluso cuando nadie lo está mirando.
       </p>
-      <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#00205B;border-radius:10px;">
-        <a href="${esc(m.siteUrl)}" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Entrar a Conexión</a>
-      </td></tr></table>
     </td></tr>
     <tr><td style="background:#F4F5F7;padding:22px 40px;border-top:1px solid #E3E7F0;">
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#6B7690;">
@@ -86,8 +82,6 @@ export function renderNominationEmail(m: NominationMail) {
     `"${m.whyMattered.trim()}"`,
     '',
     'Que alguien lo escriba ya es un reconocimiento. Gracias por hacer lo que haces, incluso cuando nadie lo está mirando.',
-    '',
-    `Entrar a Conexión: ${m.siteUrl}`,
     '',
     'Bienestar y Experiencia del Estudiante · Universidad de La Sabana',
   ].join('\n');
