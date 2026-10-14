@@ -12,7 +12,7 @@ export default function Home() {
       <section className="page home">
         <div className="hero-empty">
           <h1 className="display">Hola, {me.full_name.split(' ')[0]}</h1>
-          <p className="lead">Todavía no hay un ciclo de reconocimientos. Cuando el comité abra el primero, lo verás aquí.</p>
+          <p className="lead">Todavía no hay un ciclo de reconocimientos. Cuando Admin abra el primero, lo verás aquí.</p>
         </div>
       </section>
     );
@@ -28,9 +28,9 @@ export default function Home() {
     s === 'published' ? { to: '/resultados', text: 'Ver resultados' } : null;
 
   const waiting: Record<string, string> = {
-    draft: 'El comité está preparando este ciclo. Muy pronto abrimos las nominaciones.',
-    selection: 'Cerraron las nominaciones. El comité está armando la lista de finalistas.',
-    closed: 'La votación terminó. El comité está confirmando a las personas ganadoras.',
+    draft: 'Estamos preparando este ciclo. Muy pronto abrimos las nominaciones.',
+    selection: 'Cerraron las nominaciones. Estamos armando la lista de finalistas.',
+    closed: 'La votación terminó. Estamos confirmando a las personas ganadoras.',
   };
 
   return (

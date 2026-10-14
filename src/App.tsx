@@ -66,7 +66,7 @@ function Shell() {
         <nav aria-label="Principal">
           <NavLink to="/" end>Inicio</NavLink>
           {route && label && <NavLink to={route}>{label}</NavLink>}
-          {committee && <NavLink to="/admin">Comité</NavLink>}
+          {committee && <NavLink to="/admin">Admin</NavLink>}
         </nav>
         <Me />
       </header>
@@ -114,7 +114,7 @@ function DemoBar() {
           value={data.me.id}
           onChange={(e) => { tools.setDemoUser(e.target.value); bumpEpoch(); }}
         >
-          {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.role === 'committee' ? ' · comité' : ''}</option>)}
+          {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.role === 'committee' ? ' · Admin' : ''}</option>)}
         </select>
       </label>
       <button className="link" onClick={() => { if (confirm('¿Reiniciar la demostración? Se borran los cambios que hiciste.')) { tools.resetDemo(); bumpEpoch(); } }}>Reiniciar</button>

@@ -1,6 +1,6 @@
 import type { CycleStatus } from './types';
 
-// Las descripciones de los valores son un borrador: el comité puede ajustarlas aquí.
+// Las descripciones de los valores son un borrador: Admin puede ajustarlas aquí.
 export const VALUES = [
   { key: 'trabajo_bien_hecho', emoji: '🎯', name: 'Trabajo bien hecho', desc: 'Hacer las cosas con cuidado, criterio y calidad, incluso cuando nadie lo está mirando.' },
   { key: 'trabajo_en_equipo', emoji: '🤝', name: 'Trabajo en equipo', desc: 'Sumar con otros: compartir, apoyar y lograr juntos lo que solos no se lograría.' },

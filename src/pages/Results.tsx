@@ -35,7 +35,7 @@ export default function Results() {
 
   const choose = async (key: string) => {
     setSaving(true);
-    try { await api('choosePrize', { prize: key }); setPrize(key); burst('soft'); toast('Tu premio quedó registrado. El comité ya lo puede ver.'); }
+    try { await api('choosePrize', { prize: key }); setPrize(key); burst('soft'); toast('Tu premio quedó registrado. Admin ya lo puede ver.'); }
     catch (e) { toast((e as Error).message, 'error'); }
     setSaving(false);
   };
@@ -74,7 +74,7 @@ export default function Results() {
       {r.myWinner && (
         <div className="prizes">
           <h2 className="display">Elige tu premio</h2>
-          <p className="lead">{prize ? 'Ya quedó registrado. Si cambias de opinión, puedes elegir otro.' : 'Escoge una de las cuatro opciones. El comité verá tu elección.'}</p>
+          <p className="lead">{prize ? 'Ya quedó registrado. Si cambias de opinión, puedes elegir otro.' : 'Escoge una de las cuatro opciones. Admin verá tu elección.'}</p>
           <div className="prize-grid">
             {PRIZES.map((p) => (
               <button key={p.key} className={`prize ${prize === p.key ? 'on' : ''}`} disabled={saving} aria-pressed={prize === p.key} onClick={() => choose(p.key)}>

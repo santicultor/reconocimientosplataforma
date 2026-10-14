@@ -144,7 +144,7 @@ main { min-height: calc(100svh - 58px); }
 .bubble.hit .avatar { box-shadow: 0 0 0 3px var(--gold), 0 0 22px 4px rgba(245, 197, 24, 0.5) !important; }
 .bubble-par { transform: translate3d(calc(var(--px, 0px) * var(--depth, 1)), calc(var(--py, 0px) * var(--depth, 1)), 0); transition: transform 0.5s ease-out; will-change: transform; }
 .bubble-drift { animation: drift var(--dur, 9s) ease-in-out var(--delay, 0s) infinite; will-change: transform; }
-@keyframes drift { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(var(--dx, 8px), var(--dy, 10px), 0); } }
+@keyframes drift { 0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); } 25% { transform: translate3d(var(--dx, 8px), calc(var(--dy, 10px) * -0.6), 0) rotate(2deg); } 50% { transform: translate3d(calc(var(--dx, 8px) * 0.4), var(--dy, 10px), 0) rotate(0deg); } 75% { transform: translate3d(calc(var(--dx, 8px) * -0.9), calc(var(--dy, 10px) * 0.3), 0) rotate(-2deg); } }
 .bubble-btn { position: relative; display: block; border-radius: 50%; touch-action: manipulation; }
 .bubble-btn .avatar { transition: transform 0.25s, box-shadow 0.25s; }
 .bubble-btn:hover .avatar, .bubble-btn:focus-visible .avatar { transform: scale(1.18); }
@@ -380,5 +380,8 @@ small { color: inherit; opacity: 0.72; font-size: 0.8rem; }
 
 .jtxt { filter: brightness(0.62) saturate(1.5); font-weight: 500; }
 .vchip { min-height: 40px; padding: 4px 12px; font-size: 0.84rem; }
-   .sent-tips{margin:10px 0 14px;padding-left:18px;font-size:14px;line-height:1.5;text-align:left}
-   .sent .link:disabled{opacity:.55;cursor:default}
+
+.sent-tips{margin:10px 0 14px;padding-left:18px;font-size:14px;line-height:1.5;text-align:left}
+.sent .link:disabled{opacity:.55;cursor:default}
+.codeform{margin:12px 0 4px}
+.codeform input{letter-spacing:.3em;text-align:center;font-family:'DM Mono',monospace;font-size:20px}

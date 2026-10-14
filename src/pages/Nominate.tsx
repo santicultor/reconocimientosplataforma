@@ -135,7 +135,7 @@ function Sky({ people, matches, anyFilter, selectedId, nominated, onChoose }: {
     };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType === 'touch') return;
-      set((e.clientX / window.innerWidth - 0.5) * -26, (e.clientY / window.innerHeight - 0.5) * -26);
+      set((e.clientX / window.innerWidth - 0.5) * -44, (e.clientY / window.innerHeight - 0.5) * -44);
     };
     const onTilt = (e: DeviceOrientationEvent) => {
       if (e.gamma == null || e.beta == null) return;
@@ -162,8 +162,8 @@ function Sky({ people, matches, anyFilter, selectedId, nominated, onChoose }: {
         p, size,
         left: col * cw + cw / 2 + (r() * 2 - 1) * slack + (row % 2 ? cw * 0.12 : -cw * 0.04),
         top: row * (cw * 0.95) + cw / 2 + (r() * 2 - 1) * slack,
-        dx: Math.round((r() * 2 - 1) * 14), dy: Math.round((r() * 2 - 1) * 18),
-        dur: 7 + r() * 7, delay: -r() * 10, depth: 0.5 + r() * 1.1,
+        dx: Math.round((0.55 + r() * 0.45) * (r() < 0.5 ? -1 : 1) * 26), dy: Math.round((0.55 + r() * 0.45) * (r() < 0.5 ? -1 : 1) * 32),
+        dur: 6 + r() * 6, delay: -r() * 10, depth: 0.5 + r() * 1.1,
       };
     }),
     [people, cols, cw, w],
@@ -274,7 +274,7 @@ function NominateSheet({ person, cycle, used, onClose, onSent }: {
         {sent ? (
           <div className="sent-box" role="status">
             <h3 className="display">Gracias por hacer visible lo invisible</h3>
-            <p>Nominaste a <b>{person.full_name}</b>. El comité la revisará pronto.</p>
+            <p>Nominaste a <b>{person.full_name}</b>. Admin la revisará pronto.</p>
             <p className="quota">Tus nominaciones: <b>{sent.count} de {cycle.max_nominations}</b></p>
             <button className="btn gold" onClick={onClose}>
               {sent.count < cycle.max_nominations ? 'Nominar a alguien más' : 'Volver al cielo'}

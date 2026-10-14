@@ -1,123 +1,90 @@
-import { useEffect, useState } from 'react';
-import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { useAuth } from './lib/auth';
-import { phaseLabel, phaseRoute, useApp, useData } from './lib/app';
-import { DEMO } from './lib/api';
-import { supabaseConfigured } from './lib/supabase';
-import { Spinner } from './ui/bits';
-import { Avatar } from './ui/Avatar';
-import Login from './pages/Login';
-import Home from './pages/Home';
-import Nominate from './pages/Nominate';
-import Vote from './pages/Vote';
-import Results from './pages/Results';
-import Wall from './pages/Wall';
-import Admin from './admin/Admin';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './supabase';
+import { DEMO } from './api';
 
-export default function App() {
-  const { status } = useAuth();
-  const { data, error, refresh } = useApp();
-
-  if (!DEMO && !supabaseConfigured)
-    return (
-      <div className="sky-bg center-screen">
-        <div className="card narrow">
-          <h1 className="display">Falta conectar la base de datos</h1>
-          <p>Agrega las variables <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en Netlify y vuelve a publicar. La guía paso a paso está en el archivo <code>GUIA.md</code>.</p>
-        </div>
-      </div>
-    );
-  if (status === 'loading') return <div className="sky-bg center-screen"><Spinner /></div>;
-  if (status === 'out' || status === 'password') return <Login />;
-  if (error && !data)
-    return (
-      <div className="sky-bg center-screen">
-        <div className="card narrow">
-          <h1 className="display">No pude abrir tu cuenta</h1>
-          <p>{error}</p>
-          <button className="btn primary" onClick={refresh}>Intentar de nuevo</button>
-          <SignOutButton />
-        </div>
-      </div>
-    );
-  if (!data) return <div className="sky-bg center-screen"><Spinner /></div>;
-  return <Shell />;
+interface AuthCtx {
+  status: 'loading' | 'out' | 'password' | 'in';
+  email: string | null;
+  signIn: (email: string) => Promise<void>;
+  verifyCode: (email: string, code: string) => Promise<void>;
+  signInPassword: (email: string, password: string) => Promise<void>;
+  signUpPassword: (email: string, password: string) => Promise<void>;
+  setNewPassword: (password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
+const Ctx = createContext<AuthCtx>(null as never);
+export const useAuth = () => useContext(Ctx);
 
-function SignOutButton() {
-  const { signOut } = useAuth();
-  if (DEMO) return null;
-  return <button className="btn ghost" onClick={signOut}>Cambiar de cuenta</button>;
-}
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(!DEMO);
+  const [recovering, setRecovering] = useState(false);
 
-function Shell() {
-  const data = useData();
-  const loc = useLocation();
-  const route = phaseRoute(data.cycle);
-  const label = phaseLabel(data.cycle);
-  const isAdmin = loc.pathname.startsWith('/admin');
-  const committee = data.me.role === 'committee';
-  const voting = data.cycle?.status === 'voting';
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
+    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
 
-  return (
-    <div className={isAdmin ? 'paper-bg' : 'sky-bg'}>
-      <header className={`topbar ${isAdmin ? 'light' : ''}`}>
-        <NavLink to="/" className="brand" aria-label="Conexión, inicio">Conexión</NavLink>
-        <nav aria-label="Principal">
-          <NavLink to="/" end>Inicio</NavLink>
-          {route && label && <NavLink to={route}>{label}</NavLink>}
-          {committee && <NavLink to="/admin">Comité</NavLink>}
-        </nav>
-        <Me />
-      </header>
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/nominar" element={data.cycle?.status === 'nominations' ? <Nominate /> : <Navigate to="/" replace />} />
-          <Route path="/votar" element={<Navigate to="/muro" replace />} />
-          <Route path="/muro" element={voting ? <Vote /> : <Wall />} />
-          <Route path="/resultados" element={data.cycle?.status === 'published' ? <Results /> : <Navigate to="/" replace />} />
-          <Route path="/admin/*" element={committee ? <Admin /> : <Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      {DEMO && <DemoBar />}
-    </div>
+  const signIn = useCallback(async (email: string) => {
+    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
+    const clean = email.trim().toLowerCase();
+    const { data: ok, error: e1 } = await supabase.rpc('is_allowed_email', { _email: clean });
+    if (e1) throw new Error('No pude verificar tu correo. Intenta de nuevo en un momento.');
+    if (!ok) throw new Error('Ese correo no está en la lista del equipo. Si crees que es un error, escríbele a Admin.');
+    const { error } = await supabase.auth.signInWithOtp({ email: clean, options: { emailRedirectTo: window.location.origin } });
+    if (error) throw new Error('No pude enviar el enlace. Espera un minuto e intenta otra vez.');
+  }, []);
+
+  const verifyCode = useCallback(async (email: string, code: string) => {
+    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
+    const token = code.replace(/\D/g, '');
+    setRecovering(true);
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: 'email' });
+    if (error) setRecovering(false);
+    if (error) throw new Error('Ese código no es válido o ya venció. Pide uno nuevo.');
+  }, []);
+
+  const signInPassword = useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    if (error) throw new Error('Correo o contraseña incorrectos. Si es tu primera vez, usa «Crear mi contraseña».');
+  }, []);
+
+  const signUpPassword = useCallback(async (email: string, password: string) => {
+    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
+    const clean = email.trim().toLowerCase();
+    let res: Response;
+    try {
+      res = await fetch('/api/register', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: clean, password }),
+      });
+    } catch { throw new Error('No hay conexión. Revisa tu internet e intenta de nuevo.'); }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? 'No pude crear tu contraseña. Intenta de nuevo.');
+    const { error } = await supabase.auth.signInWithPassword({ email: clean, password });
+    if (error) throw new Error('Tu contraseña se creó, pero no pude entrar. Intenta con «Entrar».');
+  }, []);
+
+  const setNewPassword = useCallback(async (password: string) => {
+    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error('No pude guardar tu contraseña: ' + error.message);
+    setRecovering(false);
+  }, []);
+
+  const signOut = useCallback(async () => { setRecovering(false); await supabase?.auth.signOut(); }, []);
+
+  const value = useMemo<AuthCtx>(
+    () => ({
+      status: DEMO ? 'in' : loading ? 'loading' : session ? (recovering ? 'password' : 'in') : 'out',
+      email: session?.user.email ?? null,
+      signIn, verifyCode, signInPassword, signUpPassword, setNewPassword, signOut,
+    }),
+    [loading, session, recovering, setNewPassword, signIn, verifyCode, signInPassword, signUpPassword, signOut],
   );
-}
-
-function Me() {
-  const data = useData();
-  const { signOut } = useAuth();
-  return (
-    <div className="me">
-      <Avatar person={data.me} size={32} ring={false} />
-      <span className="me-name">{data.me.full_name.split(' ')[0]}</span>
-      {!DEMO && <button className="link" onClick={signOut}>Salir</button>}
-    </div>
-  );
-}
-
-function DemoBar() {
-  const { bumpEpoch } = useApp();
-  const data = useData();
-  const [people, setPeople] = useState<{ id: string; full_name: string; role: string }[]>([]);
-  const [tools, setTools] = useState<typeof import('./lib/demo') | null>(null);
-  useEffect(() => { import('./lib/demo').then((m) => { setTools(m); setPeople(m.demoPeople()); }); }, [data.cycle?.status]);
-  if (!tools) return null;
-  return (
-    <div className="demobar" role="region" aria-label="Controles de demostración">
-      <span className="tag">Demo</span>
-      <label>
-        Ver como
-        <select
-          value={data.me.id}
-          onChange={(e) => { tools.setDemoUser(e.target.value); bumpEpoch(); }}
-        >
-          {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.role === 'committee' ? ' · comité' : ''}</option>)}
-        </select>
-      </label>
-      <button className="link" onClick={() => { if (confirm('¿Reiniciar la demostración? Se borran los cambios que hiciste.')) { tools.resetDemo(); bumpEpoch(); } }}>Reiniciar</button>
-    </div>
-  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

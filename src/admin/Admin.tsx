@@ -49,7 +49,7 @@ export default function Admin() {
     <section className="admin">
       <div className="admin-head">
         <div>
-          <p className="mono-label">Panel del comité</p>
+          <p className="mono-label">Panel Admin</p>
           <h1 className="display">{isNew ? 'Nuevo ciclo' : s.cycle ? `Ciclo de ${monthName(s.cycle.month)} ${s.cycle.year}` : 'Crea el primer ciclo'}</h1>
           {s.cycle && !isNew && <p className="phase-pill">{STATUS_LABEL[s.cycle.status]} · {valueByKey(s.cycle.value_key).emoji} {valueByKey(s.cycle.value_key).name}</p>}
         </div>
@@ -348,7 +348,7 @@ function FinalistsTab({ s, reload }: TabProps) {
             </div>
           ))}
         </div>
-        <p className="hint">La votación no se puede abrir si falta alguna jefatura, salvo que el comité lo confirme.</p>
+        <p className="hint">La votación no se puede abrir si falta alguna jefatura, salvo que un Admin lo confirme.</p>
       </div>
 
       <div className="row between">
@@ -442,7 +442,7 @@ function ClosingTab({ s, reload }: TabProps) {
           {s.tie && (
             <div className="tie-box">
               <h3>Hay un empate por resolver</h3>
-              <p>{s.tie.note} Elige {s.tie.slots === 1 ? 'a 1 persona' : `a ${s.tie.slots} personas`}. Regla: gana quien no haya sido reconocido antes este año; si persiste, decide el comité y deja una nota.</p>
+              <p>{s.tie.note} Elige {s.tie.slots === 1 ? 'a 1 persona' : `a ${s.tie.slots} personas`}. Regla: gana quien no haya sido reconocido antes este año; si persiste, deciden los Admin y dejan una nota.</p>
               {s.tie.candidates.map((cd) => (
                 <label key={cd.person.id} className={`tie-cand ${pick.includes(cd.person.id) ? 'on' : ''}`}>
                   <input type="checkbox" checked={pick.includes(cd.person.id)}
@@ -450,12 +450,12 @@ function ClosingTab({ s, reload }: TabProps) {
                   <Avatar person={cd.person} size={36} />
                   <span><b>{cd.person.full_name}</b> · {cd.votes} {cd.votes === 1 ? 'voto' : 'votos'}
                     {cd.recognizedBefore && <span className="badge warn">Ya reconocido este año</span>}
-                    {cd.abstain && <span className="badge danger">Es del comité: debe abstenerse</span>}
+                    {cd.abstain && <span className="badge danger">Es Admin: debe abstenerse</span>}
                   </span>
                 </label>
               ))}
               <label>Nota de la decisión
-                <textarea rows={2} value={note} placeholder="Ej: se decidió por sorteo en la reunión del comité" onChange={(e) => setNote(e.target.value)} />
+                <textarea rows={2} value={note} placeholder="Ej: se decidió por sorteo en la reunión de Admin" onChange={(e) => setNote(e.target.value)} />
               </label>
               <div className="row end">
                 <button className="btn primary" disabled={busy || pick.length !== s.tie.slots || !note.trim()}
@@ -529,7 +529,7 @@ function PeopleTab({ s, reload }: TabProps) {
       {imp && (
         <div className="panel">
           <h3>Importar personas</h3>
-          <p>Encontré <b>{imp.rows.length}</b> filas. Columnas: nombre, cargo, jefatura, correo, foto (opcional) y rol (opcional: comité o miembro). Si el correo ya existe, se actualiza esa persona.</p>
+          <p>Encontré <b>{imp.rows.length}</b> filas. Columnas: nombre, cargo, jefatura, correo, foto (opcional) y rol (opcional: Admin o miembro). Si el correo ya existe, se actualiza esa persona.</p>
           {imp.result ? (
             <>
               <p><b>{imp.result.created}</b> nuevas · <b>{imp.result.updated}</b> actualizadas · <b>{imp.result.errors.length}</b> con error.</p>
@@ -554,7 +554,7 @@ function PeopleTab({ s, reload }: TabProps) {
                 <td><Avatar person={p} size={36} /></td>
                 <td><b>{p.full_name}</b><small>{p.cargo || '—'} · {p.email}</small></td>
                 <td><span className="tag-j light" style={{ '--c': jefaturaInfo(p.jefatura).color } as CSSProperties}>{jefaturaInfo(p.jefatura).short}</span></td>
-                <td>{p.role === 'committee' ? 'Comité' : 'Miembro'}</td>
+                <td>{p.role === 'committee' ? 'Admin' : 'Miembro'}</td>
                 <td><button className="btn link" onClick={() => toggleActive(p)}>{p.active ? 'Activa' : 'Inactiva'}</button></td>
                 <td><button className="btn ghost small" onClick={() => setEdit(p)}>Editar</button></td>
               </tr>
@@ -610,7 +610,7 @@ function PersonForm({ person, onClose, onSaved }: { person: Partial<Person>; onC
             <select value={f.jefatura} onChange={(e) => set('jefatura', e.target.value)}>{JEFATURAS.map((j) => <option key={j.name}>{j.name}</option>)}</select>
           </label>
           <label className="span2">Correo institucional<input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></label>
-          <label>Rol<select value={f.role} onChange={(e) => set('role', e.target.value)}><option value="member">Miembro</option><option value="committee">Comité</option></select></label>
+          <label>Rol<select value={f.role} onChange={(e) => set('role', e.target.value)}><option value="member">Miembro</option><option value="committee">Admin</option></select></label>
           <label className="check-row"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} />Persona activa</label>
         </div>
         <div className="row end">

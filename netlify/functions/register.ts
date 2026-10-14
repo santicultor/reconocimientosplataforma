@@ -17,7 +17,7 @@ export default async (req: Request) => {
 
     const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: ok } = await sb.rpc('is_allowed_email', { _email: email });
-    if (!ok) return json(403, { error: 'Ese correo no está en la lista del equipo. Si crees que es un error, escríbele al comité.' });
+    if (!ok) return json(403, { error: 'Ese correo no está en la lista del equipo. Si crees que es un error, escríbele a Admin.' });
 
     const { error } = await sb.auth.admin.createUser({ email, password, email_confirm: true });
     if (error) {

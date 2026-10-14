@@ -23,7 +23,7 @@ export default async (req: Request) => {
 
     const db = new SupabaseDb(sb);
     const me = (await db.all<Person>('people')).find((p) => p.email.toLowerCase() === email);
-    if (!me) return json(403, { error: 'Tu correo no está en la lista del equipo. Escríbele al comité.' });
+    if (!me) return json(403, { error: 'Tu correo no está en la lista del equipo. Escríbele a Admin.' });
 
     const { action, payload } = (await req.json()) as { action: string; payload?: unknown };
     return json(200, await handle(db, me, String(action), payload ?? {}));

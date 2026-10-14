@@ -288,7 +288,7 @@ async function wall(db: Db): Promise<WallEntry[]> {
   }));
 }
 
-// ---------- acciones del comité ----------
+// ---------- acciones de Admin ----------
 
 async function adminState(db: Db, p: any): Promise<AdminState> {
   const cycles = (await db.all<Cycle>('cycles')).sort(byPeriodDesc);
@@ -472,12 +472,12 @@ async function resolveTie(db: Db, p: any) {
   if (ids.length !== slots) fail(400, `Debes elegir exactamente ${slots} ${slots === 1 ? 'persona' : 'personas'}.`);
   for (const id of ids) if (!cands.has(id)) fail(400, 'Esa persona no está entre las empatadas.');
   const note = clean(p?.note);
-  if (!note) fail(400, 'Deja una nota explicando cómo decidió el comité.');
+  if (!note) fail(400, 'Deja una nota explicando cómo decidieron los Admin.');
   const { tally } = await outcomeFor(db, cycle);
   const start = Math.max(0, ...winners.map((w) => w.position));
   await db.insert('winners', ids.map((id, i) => ({
     cycle_id: cycle.id, nominee_id: id, position: start + i + 1, votes: tally[id] ?? 0, prize_choice: null,
-    tie_note: `${out.tie!.note} Decisión del comité: ${note}`,
+    tie_note: `${out.tie!.note} Decisión de Admin: ${note}`,
   })));
   return { ok: true };
 }
@@ -499,7 +499,7 @@ async function savePerson(db: Db, me: Person, p: any) {
     if (!cur) fail(404, 'No encontré a esa persona.');
     const remaining = all.filter((x) => x.id !== p.id && x.role === 'committee' && x.active).length;
     if (cur!.role === 'committee' && cur!.active && (role !== 'committee' || !active) && remaining === 0)
-      fail(409, 'Debe quedar al menos una persona activa en el comité.');
+      fail(409, 'Debe quedar al menos una persona activa como Admin.');
     const [row] = await db.update<Person>('people', { id: p.id }, data);
     return { person: row };
   }
@@ -524,7 +524,7 @@ async function importPeople(db: Db, rows: ImportRow[]) {
       continue;
     }
     const roleRaw = clean(r.role).toLowerCase();
-    const role: Role | null = /^(comit|committee)/.test(roleRaw) ? 'committee' : /^(miembro|member)/.test(roleRaw) ? 'member' : null;
+    const role: Role | null = /^(admin|comit|committee)/.test(roleRaw) ? 'committee' : /^(miembro|member)/.test(roleRaw) ? 'member' : null;
     const photo = clean(r.photo_url);
     const existing = byEmail.get(email);
     if (existing) {
@@ -584,7 +584,7 @@ async function recognitions(db: Db, p: any): Promise<{ years: number[]; rows: Re
 // ---------- punto de entrada ----------
 
 export async function handle(db: Db, me: Person, action: string, payload: any, now: Date = new Date()): Promise<unknown> {
-  if (!me.active) fail(403, 'Tu usuario está desactivado. Escríbele al comité.');
+  if (!me.active) fail(403, 'Tu usuario está desactivado. Escríbele a Admin.');
   switch (action) {
     case 'bootstrap': return bootstrap(db, me, now);
     case 'finalists': {
@@ -599,7 +599,7 @@ export async function handle(db: Db, me: Person, action: string, payload: any, n
     case 'wall': return wall(db);
   }
   if (!action.startsWith('admin')) fail(404, 'Acción desconocida.');
-  if (me.role !== 'committee') fail(403, 'Esta sección es solo para el comité.');
+  if (me.role !== 'committee') fail(403, 'Esta sección es solo para Admin.');
   switch (action) {
     case 'adminState': return adminState(db, payload);
     case 'adminSaveCycle': return saveCycle(db, payload);
