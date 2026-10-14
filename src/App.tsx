@@ -28,7 +28,7 @@ export default function App() {
       </div>
     );
   if (status === 'loading') return <div className="sky-bg center-screen"><Spinner /></div>;
-  if (status === 'out') return <Login />;
+  if (status === 'out' || status === 'password') return <Login />;
   if (error && !data)
     return (
       <div className="sky-bg center-screen">
