@@ -2,12 +2,29 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 
 export default function Login() {
-  const { signIn } = useAuth();
+  const { signIn, verifyCode } = useAuth();
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sent'>('idle');
   const [error, setError] = useState('');
   const [wait, setWait] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+
+  useEffect(() => {
+    const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (h.get('error_code') === 'otp_expired' || h.get('error')) {
+      setError('El enlace ya no sirve (vence a la hora o se usa una sola vez; a veces el antivirus del correo lo abre antes que tú). Pide uno nuevo y usa el código de 6 dígitos que viene en el correo.');
+      history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  const enterCode = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(''); setBusy(true);
+    try { await verifyCode(email, code); }
+    catch (err) { setError((err as Error).message); }
+    finally { setBusy(false); }
+  };
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -33,11 +50,19 @@ export default function Login() {
         {state === 'sent' ? (
           <div className="sent" role="status">
             <p><b>Revisa tu correo.</b></p>
-            <p>Te enviamos un enlace a <b>{email}</b>. Puede tardar un par de minutos en llegar.</p>
+            <p>Te enviamos un correo a <b>{email}</b> con un <b>código</b> y un enlace. Puede tardar un par de minutos.</p>
+            <form onSubmit={enterCode}>
+              <label htmlFor="code">Escribe el código del correo</label>
+              <input
+                id="code" inputMode="numeric" autoComplete="one-time-code" maxLength={8}
+                placeholder="123456" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              />
+              <button className="btn gold block" disabled={busy || code.length < 6}>{busy ? 'Entrando…' : 'Entrar'}</button>
+            </form>
             <ul className="sent-tips">
               <li>Si no lo ves, revisa <b>Spam</b> o <b>Correo no deseado</b>.</li>
-              <li>Ábrelo desde este mismo dispositivo y navegador.</li>
-              <li>El enlace funciona una sola vez y vence en una hora.</li>
+              <li>El código es más seguro que el enlace: úsalo si el enlace te devuelve a esta pantalla.</li>
+              <li>Vence en una hora y solo sirve una vez.</li>
             </ul>
             {error && <p className="error" role="alert">{error}</p>}
             <p>
@@ -58,9 +83,9 @@ export default function Login() {
             />
             {error && <p className="error" role="alert">{error}</p>}
             <button className="btn gold block" disabled={busy}>
-              {busy ? 'Enviando…' : 'Enviarme el enlace de acceso'}
+              {busy ? 'Enviando…' : 'Enviarme el código de acceso'}
             </button>
-            <p className="hint">Sin contraseña: te llega un enlace al correo. Solo entran personas del equipo DBEE.</p>
+            <p className="hint">Sin contraseña: te llega un código al correo. Solo entran personas del equipo DBEE.</p>
           </form>
         )}
       </div>
