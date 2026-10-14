@@ -380,3 +380,5 @@ small { color: inherit; opacity: 0.72; font-size: 0.8rem; }
 
 .jtxt { filter: brightness(0.62) saturate(1.5); font-weight: 500; }
 .vchip { min-height: 40px; padding: 4px 12px; font-size: 0.84rem; }
+   .sent-tips{margin:10px 0 14px;padding-left:18px;font-size:14px;line-height:1.5;text-align:left}
+   .sent .link:disabled{opacity:.55;cursor:default}
