@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 type Mode = 'in' | 'up' | 'code-ask' | 'code-enter';
 
 export default function Login() {
-  const { signIn, verifyCode, signInPassword, signUpPassword } = useAuth();
+  const { status, signIn, verifyCode, signInPassword, signUpPassword, setNewPassword, signOut } = useAuth();
   const [mode, setMode] = useState<Mode>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +41,12 @@ export default function Login() {
   const sendCode = () => run(async () => { await signIn(email.trim()); setMode('code-enter'); setWait(60); });
   const submitCode = (e: FormEvent) => { e.preventDefault(); void run(() => verifyCode(email, code)); };
 
+  const submitNew = (e: FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) { setError('Tu contraseña debe tener al menos 8 caracteres.'); return; }
+    void run(() => setNewPassword(password));
+  };
+
   const go = (m: Mode) => { setMode(m); setError(''); setPassword(''); setCode(''); };
 
   const emailField = (
@@ -62,7 +68,18 @@ export default function Login() {
         <h1 className="display huge">Conexión</h1>
         <p className="lema">un sistema para hacer visible lo invisible</p>
 
-        {mode === 'in' && (
+        {status === 'password' && (
+          <form onSubmit={submitNew}>
+            <p><b>Ya entraste.</b> Ahora inventa tu contraseña para la próxima vez.</p>
+            <label htmlFor="npw">Nueva contraseña (mínimo 8 caracteres)</label>
+            <input id="npw" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {err}
+            <button className="btn gold block" disabled={busy}>{busy ? 'Guardando…' : 'Guardar y entrar'}</button>
+            <p className="hint"><button type="button" className="link" onClick={() => void signOut()}>Cancelar</button></p>
+          </form>
+        )}
+
+        {status !== 'password' && mode === 'in' && (
           <form onSubmit={submitIn}>
             {emailField}
             <label htmlFor="pw">Contraseña</label>
@@ -76,7 +93,7 @@ export default function Login() {
           </form>
         )}
 
-        {mode === 'up' && (
+        {status !== 'password' && mode === 'up' && (
           <form onSubmit={submitUp}>
             {emailField}
             <label htmlFor="pw">Inventa una contraseña (mínimo 8 caracteres)</label>
@@ -87,7 +104,7 @@ export default function Login() {
           </form>
         )}
 
-        {mode === 'code-ask' && (
+        {status !== 'password' && mode === 'code-ask' && (
           <form onSubmit={(e) => { e.preventDefault(); void sendCode(); }}>
             {emailField}
             {err}
@@ -96,7 +113,7 @@ export default function Login() {
           </form>
         )}
 
-        {mode === 'code-enter' && (
+        {status !== 'password' && mode === 'code-enter' && (
           <form onSubmit={submitCode} className="sent" role="status">
             <p><b>Revisa tu correo</b> (y Spam). Te enviamos un código a <b>{email}</b>.</p>
             <label htmlFor="code">Código</label>
