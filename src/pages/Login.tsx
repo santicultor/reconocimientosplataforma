@@ -1,30 +1,25 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth';
 
+type Mode = 'in' | 'up' | 'code-ask' | 'code-enter';
+
 export default function Login() {
-  const { signIn, verifyCode } = useAuth();
+  const { signIn, verifyCode, signInPassword, signUpPassword } = useAuth();
+  const [mode, setMode] = useState<Mode>('in');
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<'idle' | 'sent'>('idle');
-  const [error, setError] = useState('');
-  const [wait, setWait] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [wait, setWait] = useState(0);
 
   useEffect(() => {
     const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    if (h.get('error_code') === 'otp_expired' || h.get('error')) {
-      setError('El enlace ya no sirve (vence a la hora o se usa una sola vez; a veces el antivirus del correo lo abre antes que tú). Pide uno nuevo y usa el código de 6 dígitos que viene en el correo.');
+    if (h.get('error_code') || h.get('error')) {
+      setError('El enlace del correo ya no sirve. Entra con tu contraseña o pide un código nuevo.');
       history.replaceState(null, '', window.location.pathname);
     }
   }, []);
-
-  const enterCode = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(''); setBusy(true);
-    try { await verifyCode(email, code); }
-    catch (err) { setError((err as Error).message); }
-    finally { setBusy(false); }
-  };
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -32,14 +27,33 @@ export default function Login() {
     return () => clearTimeout(t);
   }, [wait]);
 
-  const send = async () => {
+  const run = async (fn: () => Promise<void>) => {
     setError(''); setBusy(true);
-    try { await signIn(email.trim()); setState('sent'); setWait(60); }
-    catch (err) { setError((err as Error).message); }
-    finally { setBusy(false); }
+    try { await fn(); } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   };
 
-  const submit = (e: FormEvent) => { e.preventDefault(); void send(); };
+  const submitIn = (e: FormEvent) => { e.preventDefault(); void run(() => signInPassword(email, password)); };
+  const submitUp = (e: FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) { setError('Tu contraseña debe tener al menos 8 caracteres.'); return; }
+    void run(() => signUpPassword(email, password));
+  };
+  const sendCode = () => run(async () => { await signIn(email.trim()); setMode('code-enter'); setWait(60); });
+  const submitCode = (e: FormEvent) => { e.preventDefault(); void run(() => verifyCode(email, code)); };
+
+  const go = (m: Mode) => { setMode(m); setError(''); setPassword(''); setCode(''); };
+
+  const emailField = (
+    <>
+      <label htmlFor="email">Tu correo institucional</label>
+      <input
+        id="email" type="email" required autoComplete="email" inputMode="email"
+        placeholder="nombre.apellido@unisabana.edu.co"
+        value={email} onChange={(e) => setEmail(e.target.value)}
+      />
+    </>
+  );
+  const err = error && <p className="error" role="alert">{error}</p>;
 
   return (
     <div className="sky-bg center-screen login">
@@ -47,45 +61,56 @@ export default function Login() {
         <p className="mono-label">Reconocimientos DBEE</p>
         <h1 className="display huge">Conexión</h1>
         <p className="lema">un sistema para hacer visible lo invisible</p>
-        {state === 'sent' ? (
-          <div className="sent" role="status">
-            <p><b>Revisa tu correo.</b></p>
-            <p>Te enviamos un correo a <b>{email}</b> con un <b>código</b> y un enlace. Puede tardar un par de minutos.</p>
-            <form onSubmit={enterCode}>
-              <label htmlFor="code">Escribe el código del correo</label>
-              <input
-                id="code" inputMode="numeric" autoComplete="one-time-code" maxLength={8}
-                placeholder="123456" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              />
-              <button className="btn gold block" disabled={busy || code.length < 6}>{busy ? 'Entrando…' : 'Entrar'}</button>
-            </form>
-            <ul className="sent-tips">
-              <li>Si no lo ves, revisa <b>Spam</b> o <b>Correo no deseado</b>.</li>
-              <li>El código es más seguro que el enlace: úsalo si el enlace te devuelve a esta pantalla.</li>
-              <li>Vence en una hora y solo sirve una vez.</li>
-            </ul>
-            {error && <p className="error" role="alert">{error}</p>}
-            <p>
-              <button className="link" disabled={wait > 0 || busy} onClick={() => void send()}>
-                {busy ? 'Enviando…' : wait > 0 ? `Reenviar enlace en ${wait} s` : 'Reenviar enlace'}
+
+        {mode === 'in' && (
+          <form onSubmit={submitIn}>
+            {emailField}
+            <label htmlFor="pw">Contraseña</label>
+            <input id="pw" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {err}
+            <button className="btn gold block" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+            <p className="hint">
+              ¿Primera vez? <button type="button" className="link" onClick={() => go('up')}>Crear mi contraseña</button><br />
+              <button type="button" className="link" onClick={() => go('code-ask')}>Olvidé mi contraseña</button>
+            </p>
+          </form>
+        )}
+
+        {mode === 'up' && (
+          <form onSubmit={submitUp}>
+            {emailField}
+            <label htmlFor="pw">Inventa una contraseña (mínimo 8 caracteres)</label>
+            <input id="pw" type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {err}
+            <button className="btn gold block" disabled={busy}>{busy ? 'Creando…' : 'Crear y entrar'}</button>
+            <p className="hint">Solo entran personas del equipo DBEE. <button type="button" className="link" onClick={() => go('in')}>Ya tengo contraseña</button></p>
+          </form>
+        )}
+
+        {mode === 'code-ask' && (
+          <form onSubmit={(e) => { e.preventDefault(); void sendCode(); }}>
+            {emailField}
+            {err}
+            <button className="btn gold block" disabled={busy}>{busy ? 'Enviando…' : 'Enviarme un código al correo'}</button>
+            <p className="hint">Con el código entras sin contraseña. <button type="button" className="link" onClick={() => go('in')}>Volver</button></p>
+          </form>
+        )}
+
+        {mode === 'code-enter' && (
+          <form onSubmit={submitCode} className="sent" role="status">
+            <p><b>Revisa tu correo</b> (y Spam). Te enviamos un código a <b>{email}</b>.</p>
+            <label htmlFor="code">Código</label>
+            <input id="code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} placeholder="123456"
+              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
+            {err}
+            <button className="btn gold block" disabled={busy || code.length < 6}>{busy ? 'Entrando…' : 'Entrar'}</button>
+            <p className="hint">
+              <button type="button" className="link" disabled={wait > 0 || busy} onClick={() => void sendCode()}>
+                {wait > 0 ? `Reenviar código en ${wait} s` : 'Reenviar código'}
               </button>
               {' · '}
-              <button className="link" onClick={() => { setState('idle'); setWait(0); }}>Usar otro correo</button>
+              <button type="button" className="link" onClick={() => go('in')}>Volver</button>
             </p>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <label htmlFor="email">Tu correo institucional</label>
-            <input
-              id="email" type="email" required autoComplete="email" inputMode="email"
-              placeholder="nombre.apellido@unisabana.edu.co"
-              value={email} onChange={(e) => setEmail(e.target.value)}
-            />
-            {error && <p className="error" role="alert">{error}</p>}
-            <button className="btn gold block" disabled={busy}>
-              {busy ? 'Enviando…' : 'Enviarme el código de acceso'}
-            </button>
-            <p className="hint">Sin contraseña: te llega un código al correo. Solo entran personas del equipo DBEE.</p>
           </form>
         )}
       </div>
