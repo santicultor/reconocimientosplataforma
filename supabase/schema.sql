@@ -50,6 +50,7 @@ create table public.nominations (
   why_mattered text not null,
   status public.nomination_status not null default 'pending',
   reject_reason text,
+  notified_at timestamptz,
   created_at timestamptz not null default now(),
   unique (cycle_id, nominator_id, nominee_id)
 );
@@ -106,5 +107,5 @@ on conflict (id) do nothing;
 
 -- Primera persona del comité (puede entrar y luego importar al resto del equipo)
 insert into public.people (full_name, cargo, jefatura, email, role)
-values ('Santiago Bedoya Barahona', 'Coordinador de Cultura', 'Desarrollo Cultural, Protocolo y Eventos',
+values ('Santiago Bedoya Barahona', 'Coordinador de Cultura', 'Cultura',
         'santiago.bedoya@unisabana.edu.co', 'committee');

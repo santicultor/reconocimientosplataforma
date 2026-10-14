@@ -4,6 +4,7 @@
  * Las reglas que protegen el voto secreto y la privacidad de las nominaciones están en este archivo:
  * ninguna respuesta incluye quién votó por quién.
  */
+import { renderNominationEmail } from './email';
 import type {
   AdminNomination, AdminState, BootstrapData, Cycle, CycleStatus, Db, Finalist, FinalistCard,
   ImportRow, Nomination, Person, PublicPerson, Quote, RecognitionRow, ResultsData, Role,
@@ -334,7 +335,7 @@ async function adminState(db: Db, p: any): Promise<AdminState> {
           person: { ...pub(pm[id]), role: pm[id].role as Role },
           votes: base.tally?.[id] ?? 0,
           recognizedBefore: !!base.recognized[id],
-          abstain: pm[id].role === 'committee',
+          abstain: false,
         })),
       } satisfies TieInfo;
     }
@@ -424,7 +425,7 @@ async function setStatus(db: Db, p: any) {
   return { cycle: row };
 }
 
-async function reviewNomination(db: Db, p: any) {
+async function reviewNomination(db: Db, p: any, mailer?: Mailer) {
   const n = (await db.all<Nomination>('nominations', { id: p?.id }))[0];
   if (!n) return fail(404, 'No encontré esa nominación.');
   const cycle = await getCycle(db, n!.cycle_id);
@@ -438,7 +439,38 @@ async function reviewNomination(db: Db, p: any) {
     const left = await db.all<Nomination>('nominations', { cycle_id: n!.cycle_id, nominee_id: n!.nominee_id, status: 'approved' });
     if (!left.length) await db.remove('finalists', { cycle_id: n!.cycle_id, nominee_id: n!.nominee_id });
   }
-  return { ok: true };
+  // Al aprobar, la persona recibe (una sola vez) un correo anónimo con lo que escribieron sobre ella.
+  let emailed: boolean | null = null;
+  if (status === 'approved' && mailer && !n!.notified_at) {
+    const nominee = (await db.all<Person>('people', { id: n!.nominee_id }))[0];
+    if (nominee?.email && nominee.active) {
+      try {
+        const mail = renderNominationEmail({
+          name: nominee.full_name, valueKey: n!.value_key, whatDid: n!.what_did, whyMattered: n!.why_mattered,
+          month: cycle.month, siteUrl: mailer.siteUrl,
+        });
+        await mailer.send({ to: nominee.email, ...mail });
+        await db.update('nominations', { id: n!.id }, { notified_at: new Date().toISOString() });
+        emailed = true;
+      } catch (e) {
+        console.error('No pude enviar el correo de nominación', e);
+        emailed = false;
+      }
+    }
+  }
+  return { ok: true, emailed };
+}
+
+async function testEmail(me: Person, mailer?: Mailer) {
+  if (!mailer) fail(409, 'El envío de correos no está configurado todavía (faltan las variables SMTP en Netlify).');
+  const mail = renderNominationEmail({
+    name: me.full_name, valueKey: 'invisible', month: new Date().getMonth() + 1, siteUrl: mailer!.siteUrl,
+    whatDid: 'Revisó uno por uno los listados de asistencia y corrigió los errores antes de que llegaran a los estudiantes, sin que nadie se lo pidiera.',
+    whyMattered: 'Gracias a ese cuidado, nadie tuvo que repetir trámites. Es de esas cosas que no se ven, pero que hacen que todo fluya.',
+  });
+  try { await mailer!.send({ to: me.email, ...mail }); }
+  catch (e) { console.error(e); fail(502, 'No pude enviar el correo de prueba. Revisa los datos SMTP en Netlify.'); }
+  return { ok: true, to: me.email };
 }
 
 async function setFinalists(db: Db, p: any) {
@@ -583,7 +615,12 @@ async function recognitions(db: Db, p: any): Promise<{ years: number[]; rows: Re
 
 // ---------- punto de entrada ----------
 
-export async function handle(db: Db, me: Person, action: string, payload: any, now: Date = new Date()): Promise<unknown> {
+export interface Mailer {
+  siteUrl: string;
+  send: (mail: { to: string; subject: string; html: string; text: string }) => Promise<void>;
+}
+
+export async function handle(db: Db, me: Person, action: string, payload: any, now: Date = new Date(), mailer?: Mailer): Promise<unknown> {
   if (!me.active) fail(403, 'Tu usuario está desactivado. Escríbele a Admin.');
   switch (action) {
     case 'bootstrap': return bootstrap(db, me, now);
@@ -604,7 +641,8 @@ export async function handle(db: Db, me: Person, action: string, payload: any, n
     case 'adminState': return adminState(db, payload);
     case 'adminSaveCycle': return saveCycle(db, payload);
     case 'adminSetStatus': return setStatus(db, payload);
-    case 'adminReviewNomination': return reviewNomination(db, payload);
+    case 'adminReviewNomination': return reviewNomination(db, payload, mailer);
+    case 'adminTestEmail': return testEmail(me, mailer);
     case 'adminSetFinalists': return setFinalists(db, payload);
     case 'adminResolveTie': return resolveTie(db, payload);
     case 'adminSavePerson': return savePerson(db, me, payload);

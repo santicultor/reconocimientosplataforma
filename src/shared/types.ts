@@ -51,6 +51,7 @@ export interface Nomination {
   why_mattered: string;
   status: NominationStatus;
   reject_reason: string | null;
+  notified_at?: string | null;
   created_at: string;
 }
 

@@ -235,7 +235,12 @@ function NominationsTab({ s, reload }: TabProps) {
   const open = s.cycle && ['nominations', 'selection'].includes(s.cycle.status);
 
   const review = async (id: string, status: string, why?: string) => {
-    try { await api('adminReviewNomination', { id, status, reject_reason: why }); setRejecting(null); setReason(''); await reload(); }
+    try {
+      const r = await api<{ emailed: boolean | null }>('adminReviewNomination', { id, status, reject_reason: why });
+      setRejecting(null); setReason(''); await reload();
+      if (r.emailed === true) toast('Aprobada. La persona recibió su correo anónimo. 💌');
+      if (r.emailed === false) toast('Aprobada, pero no pude enviar el correo. Revisa la configuración SMTP.', 'error');
+    }
     catch (e) { toast((e as Error).message, 'error'); }
   };
 
@@ -254,6 +259,13 @@ function NominationsTab({ s, reload }: TabProps) {
         ))}
       </div>
       {!open && <p className="hint">Este ciclo ya no admite revisión de nominaciones.</p>}
+      <p className="hint">
+        Al aprobar una nominación, la persona recibe un correo anónimo con lo que escribieron sobre ella.{' '}
+        <button className="link" onClick={async () => {
+          try { const r = await api<{ to: string }>('adminTestEmail'); toast(`Te envié un correo de prueba a ${r.to}.`); }
+          catch (e) { toast((e as Error).message, 'error'); }
+        }}>Enviarme un correo de prueba</button>
+      </p>
       {!groups.length && <p className="empty">No hay nominaciones en esta vista.</p>}
       <div className="stack">
         {groups.map((g) => {
@@ -450,7 +462,6 @@ function ClosingTab({ s, reload }: TabProps) {
                   <Avatar person={cd.person} size={36} />
                   <span><b>{cd.person.full_name}</b> · {cd.votes} {cd.votes === 1 ? 'voto' : 'votos'}
                     {cd.recognizedBefore && <span className="badge warn">Ya reconocido este año</span>}
-                    {cd.abstain && <span className="badge danger">Es Admin: debe abstenerse</span>}
                   </span>
                 </label>
               ))}

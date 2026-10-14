@@ -15,7 +15,7 @@ export const valueByKey = (key: string) => VALUES.find((v) => v.key === key) ?? 
 
 export const JEFATURAS = [
   { name: 'Experiencia del Estudiante', short: 'Experiencia', color: '#6EA8FF' },
-  { name: 'Desarrollo Cultural, Protocolo y Eventos', short: 'Cultura y Eventos', color: '#E39BFF' },
+  { name: 'Cultura', short: 'Cultura', color: '#E39BFF' },
   { name: 'Éxito Académico', short: 'Éxito Académico', color: '#6FE3B3' },
   { name: 'Prevención y Salud', short: 'Prevención y Salud', color: '#FF9C9C' },
   { name: 'Desarrollo Deportivo', short: 'Deportivo', color: '#FFC46B' },
