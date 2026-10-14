@@ -43,13 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw new Error('Ese código no es válido o ya venció. Pide uno nuevo.');
   }, []);
 
-  const checkAllowed = useCallback(async (clean: string) => {
-    if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
-    const { data: ok, error } = await supabase.rpc('is_allowed_email', { _email: clean });
-    if (error) throw new Error('No pude verificar tu correo. Intenta de nuevo en un momento.');
-    if (!ok) throw new Error('Ese correo no está en la lista del equipo. Si crees que es un error, escríbele al comité.');
-  }, []);
-
   const signInPassword = useCallback(async (email: string, password: string) => {
     if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
@@ -59,14 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpPassword = useCallback(async (email: string, password: string) => {
     if (!supabase) throw new Error('La app todavía no está conectada a Supabase.');
     const clean = email.trim().toLowerCase();
-    await checkAllowed(clean);
-    const { data, error } = await supabase.auth.signUp({ email: clean, password });
-    if (error) {
-      if (/registered|already/i.test(error.message)) throw new Error('Ese correo ya tiene contraseña. Entra con ella o usa «Olvidé mi contraseña».');
-      throw new Error('No pude crear tu contraseña: ' + error.message);
-    }
-    if (!data.session) throw new Error('Tu cuenta se creó, pero falta confirmarla por correo. Avísale al comité.');
-  }, [checkAllowed]);
+    let res: Response;
+    try {
+      res = await fetch('/api/register', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: clean, password }),
+      });
+    } catch { throw new Error('No hay conexión. Revisa tu internet e intenta de nuevo.'); }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? 'No pude crear tu contraseña. Intenta de nuevo.');
+    const { error } = await supabase.auth.signInWithPassword({ email: clean, password });
+    if (error) throw new Error('Tu contraseña se creó, pero no pude entrar. Intenta con «Entrar».');
+  }, []);
 
   const signOut = useCallback(async () => { await supabase?.auth.signOut(); }, []);
 
